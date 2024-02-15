@@ -415,6 +415,59 @@ class BaseKerning(BaseDict, DeprecatedKerning, RemovedKerning):
         """
         return super(BaseKerning, self).pop(pair, default)
 
+    def add(self, pair, value, exceptionType=None):
+        
+        font = self._font
+
+        KERNING_EXCEPTION_TYPES = [ "g2G", #glyph to group
+                                    "g2g", #glyph to glyph
+                                    "G2g", #group to glyph
+        ]
+
+        pair = normalizers.normalizeKerningKey(pair)
+        value = normalizers.normalizeKerningValue(value)
+
+        side1,side2 = pair
+
+        if not exceptionType:
+            exceptionType = "find"
+        else:
+            if exceptionType in KERNING_EXCEPTION_TYPES:
+                pass
+            else:
+                raise TypeError("Exception type '%s' is unknown" % exceptionType)      
+                
+        if side1.startswith("public.kern1"):
+            side1Group = side1
+        else:
+            side1Glyph = side1
+            side1Group = side1
+            for gs in font.groups.findGlyph(side1):
+                if gs.startswith("public.kern1"):
+                    side1Group = gs
+            
+        if side2.startswith("public.kern2"):
+            side2Group = side2
+        else:                
+            side2Glyph = side2
+            side2Group = side2
+            for gs in font.groups.findGlyph(side2):
+                if gs.startswith("public.kern2"):
+                    side2Group = gs
+                    
+        if exceptionType == "find":
+            pair = (side1Group, side2Group)
+        elif exceptionType == "g2G":  #glyph to group
+            pair = (side1Glyph, side2Group)
+        elif exceptionType == "g2g":  #glyph to glyph
+            pair = (side1Glyph, side2Glyph)
+        elif exceptionType == "G2g":  #group to glyph
+            pair = (side1Group, side2Glyph)
+
+        super(BaseKerning, self).__setitem__(pair, value)
+
+
+
     def update(self, otherKerning):
         """
         Updates the Kerning based on **otherKerning**. **otherKerning** is a ``dict`` of
